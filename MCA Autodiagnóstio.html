@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar Legal Empresarial – MCA Abogados (Diagnóstico)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* Definición del esquema de colores */
+        :root {
+            --color-primary: #0c3965;
+            --color-red: #ef4444;    /* Riesgo Jurídico (0-40%) */
+            --color-yellow: #f59e0b; /* En Proceso (41-70%) */
+            --color-green: #22c55e;  /* Jurídicamente Sólida (71-100%) */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Fondo más suave */
+        }
+        /* Estilos generales para centrar el contenido y aplicar el color primario */
+        .primary-bg { background-color: var(--color-primary); }
+        .primary-text { color: var(--color-primary); }
+        .btn-primary {
+            background-color: var(--color-primary);
+            transition: all 0.3s ease-in-out; /* Transiciones suaves */
+            transform: scale(1);
+        }
+        .btn-primary:hover {
+            background-color: #082d50; 
+            box-shadow: 0 8px 15px rgba(12, 57, 101, 0.4); /* Sombra más profunda */
+            transform: scale(1.02);
+        }
+        
+        .text-level-red { color: var(--color-red); }
+        .text-level-yellow { color: var(--color-yellow); }
+        .text-level-green { color: var(--color-green); }
+
+        /* Estilo para el botón flotante de progreso */
+        #progress-counter {
+            background-color: white;
+            color: var(--color-primary);
+            border: 2px solid var(--color-primary);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); /* Sombra más pronunciada */
+            font-weight: 700;
+        }
+
+        /* Animación del reloj para el modal de tiempo estimado */
+        .clock-rotation {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem; 
+            line-height: 1; 
+            animation: rotate 1.5s linear infinite; /* Animación más lenta y elegante */
+        }
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Colores para la barra de progreso segmentada */
+        #overall-bar {
+            background: linear-gradient(to right, 
+                var(--color-red) 0%, var(--color-red) 40%, 
+                var(--color-yellow) 40%, var(--color-yellow) 70%, 
+                var(--color-green) 70%, var(--color-green) 100%
+            );
+        }
+        #score-indicator {
+            transition: left 1s ease-out;
+            transform: translateX(-50%); 
+        }
+
+        /* Estilo para opciones de respuesta tipo radio/card (Limpieza y atractivo) */
+        .answer-option {
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid #ddd; /* Borde más sutil */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .answer-option:hover {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .answer-option.selected {
+            border-color: var(--color-primary);
+            background-color: #f3f8fe; /* Fondo muy claro para destacar */
+            box-shadow: 0 0 0 4px rgba(12, 57, 101, 0.2); /* Anillo de enfoque */
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-start justify-center p-4 sm:p-8 flex-col">
+
+    <div id="app-container" class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 sm:p-10 my-8 flex-grow">
+
+        <div id="progress-counter" class="fixed top-6 right-6 z-50 p-4 rounded-full text-lg font-bold hidden">
+            <span id="answered-count">0</span> / <span id="total-count">0</span>
+        </div>
+
+        <div id="content-area">
+            </div>
+
+    </div>
+
+    <footer class="w-full max-w-4xl text-center py-5 text-gray-700 text-base mt-4 border-t border-gray-300">
+        <p class="font-semibold primary-text">
+            ⚖️ MCA Asesores Jurídicos y Financieros
+        </p>
+        <p class="text-sm mt-1">
+            <a href="https://mcaasesores.com.co/" target="_blank" class="text-gray-500 hover:text-gray-700 hover:underline transition duration-150">
+                www.mcaasesores.com.co
+            </a>
+        </p>
+    </footer>
+    <div id="time-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center transition-opacity">
+        <div class="primary-bg text-white p-10 rounded-xl shadow-2xl max-w-sm text-center transform scale-100 transition-transform duration-300">
+            <div class="clock-rotation mx-auto mb-5">🕒</div> <p id="modal-greeting" class="text-3xl font-bold mb-3"></p> <p class="text-xl font-light">El tiempo estimado para completar este diagnóstico es de</p>
+            <p class="text-4xl font-extrabold mt-3 mb-6">7 a 10 minutos.</p>
+            <button id="modal-close-btn" class="mt-4 w-full py-3 bg-white text-gray-900 font-bold rounded-xl text-lg hover:bg-gray-100 transition shadow-lg">Comenzar Ahora</button>
+        </div>
+    </div>
+    
+    <div id="server-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center transition-opacity">
+        <div class="bg-white p-10 rounded-xl shadow-2xl max-w-lg text-center transform scale-100 transition-transform duration-300">
+            <div id="server-modal-icon" class="clock-rotation mx-auto mb-5 primary-text">🔄</div>
+            <p id="server-modal-title" class="text-2xl font-bold primary-text mb-3">Procesando Resultados...</p>
+            <p id="server-modal-message" class="text-lg font-light text-gray-700">Estamos calculando tu nivel de madurez, generando el reporte PDF y enviándolo a tu correo electrónico (${userData.email}). Por favor, espera un momento. Esto puede tardar unos segundos.</p>
+            <a id="download-button" href="#" target="_blank" class="btn-primary text-white font-bold py-3 px-8 rounded-xl text-lg w-full mt-6 shadow-md hidden" download>
+                ✅ Descarga tu Resultado Aquí
+            </a>
+        </div>
+    </div>
+
+
+    <script>
+        // *** COPIA Y PEGA EL URL DE TU DEPLOYMENT DE GOOGLE APPS SCRIPT AQUÍ ***
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRQUE4Iy332O1hL5nkHJJ0jXiwvWB6FLe6_gNBE_mS3kZIqI0I_-UKMgjbbzjKcUI6Mw/exec'; 
+        // *************************************************************************
+
+        const PRIMARY_COLOR = '#0c3965';
+        const RED_COLOR = '#ef4444';
+        const YELLOW_COLOR = '#f59e0b';
+        const GREEN_COLOR = '#22c55e';
+
+        let currentPhase = 'welcome';
+        let currentQuestionIndex = 0;
+        let userData = { name: '', company: '', email: '' };
+        let answers = [];
+        let totalQuestions = 0;
+        let chartInstances = {}; // Para almacenar las instancias de Chart.js
+
+        // Mapping de Áreas a descripciones más largas y claras
+        const areaDescriptions = {
+            "Cultura y Estrategia Legal": "En esta sección evaluaremos si el enfoque legal hace parte activa de la estrategia empresarial y del pensamiento de la alta dirección. Una cultura legal sólida permite prevenir riesgos y tomar decisiones más acertadas. Si este aspecto se descuida, la empresa puede operar con una falsa sensación de seguridad y enfrentar problemas legales evitables.",
+            "Contratos y Relaciones Comerciales": "Aquí analizaremos si los contratos con clientes, proveedores y empleados están formalizados, actualizados y alineados con la ley colombiana. Los contratos bien estructurados son la base de relaciones comerciales sanas y seguras. Su ausencia o debilidad puede abrir la puerta a incumplimientos, litigios y pérdidas financieras.",
+            "Gestión Laboral y Seguridad Social": "Esta sección permite identificar si la empresa está cumpliendo con todas sus obligaciones laborales y de seguridad social. El respeto por los derechos de los colaboradores no solo es un deber legal, sino una muestra de responsabilidad empresarial. Ignorar estos aspectos puede derivar en sanciones, demandas o deterioro del clima organizacional.",
+            "Tributario y Financiero": "Aquí evaluaremos si la empresa presenta sus declaraciones tributarias a tiempo, cumple con la facturación electrónica y aplica las normas contables vigentes. Una gestión tributaria responsable asegura la estabilidad legal y financiera del negocio. Descuidos o errores en este ámbito pueden generar sanciones, embargos y pérdida de confianza ante entidades.",
+            "Protección de datos personales (Habeas Data)": "En este bloque se verifica si tu empresa protege adecuadamente la información personal de clientes, proveedores y empleados. Cumplir con la Ley de Habeas Data no es solo una exigencia legal, sino una señal de respeto y profesionalismo. El mal manejo de datos puede traer sanciones económicas y dañar la reputación de tu marca.",
+            "Propiedad intelectual y activos digitales": "Analizaremos si los activos intangibles de tu empresa —como la marca, el logotipo o desarrollos propios— están protegidos legalmente. Registrar y cuidar estos elementos evita plagios y fortalece el valor del negocio. Descuidarlos puede poner en riesgo tu identidad empresarial o permitir que terceros se apropien de lo que has construido.",
+            "Gobierno Corporativo y Control Interno": "Esta sección explora si la empresa cuenta con una estructura legal formal, con documentos actualizados y cumplimiento de deberes societarios. Tener claridad jurídica al interior de la organización fortalece la gobernanza y facilita procesos como alianzas, inversión o expansión. La informalidad puede generar conflictos internos y obstáculos legales.",
+            "Cumplimiento sectorial y regulatorio": "Evaluaremos si tu empresa cumple con los requisitos legales propios de su sector (ambiental, sanitario, comercial, transporte, etc.). Estar al día en permisos y licencias evita sanciones, suspensiones o incluso el cierre del negocio. No gestionar estos elementos puede exponer a la empresa a pérdidas operativas y reputacionales.",
+            "Sectores Especializados": "Aquí revisamos si la empresa cuenta con seguros adecuados y entiende los principales riesgos que debe cubrir. Una buena gestión del riesgo incluye prever lo inesperado y proteger el patrimonio empresarial. Omitir este punto puede dejar a la empresa expuesta ante accidentes, demandas o eventos catastróficos.",
+            "Innovación y Futuro": "Esta sección analiza el uso de tecnología para mejorar los procesos legales, documentales y de cumplimiento. Incorporar herramientas digitales reduce errores, optimiza tiempos y permite mayor trazabilidad. Ignorar el potencial de la LegalTech puede mantener a la empresa en desventaja competitiva y operativa frente a sus pares.",
+        };
+        
+        // Mapeo de áreas a los títulos simplificados usados en el quiz
+        const areaToQuizTitle = {
+            "Cultura y Estrategia Legal": "CULTURA Y ESTRATEGIA LEGAL",
+            "Contratos y Relaciones Comerciales": "GESTIÓN JURÍDICA OPERATIVA", // Usaremos solo la primera área para la descripción
+            "Gestión Laboral y Seguridad Social": "GESTIÓN JURÍDICA OPERATIVA",
+            "Tributario y Financiero": "GESTIÓN JURÍDICA OPERATIVA",
+            "Cumplimiento sectorial y regulatorio": "GESTIÓN JURÍDICA OPERATIVA",
+            "Gobierno Corporativo y Control Interno": "GOBIERNO CORPORATIVO Y CONTROL INTERNO",
+            "Activos Intangibles y Reputación": "ACTIVOS INTANGIBLES Y REPUTACIÓN",
+            "Propiedad intelectual y activos digitales": "ACTIVOS INTANGIBLES Y REPUTACIÓN",
+            "Protección de datos personales (Habeas Data)": "ACTIVOS INTANGIBLES Y REPUTACIÓN",
+            "Reputación digital y riesgos legales en redes": "ACTIVOS INTANGIBLES Y REPUTACIÓN",
+            "Sectores Especializados": "SECTORES ESPECIALIZADOS",
+            "Innovación y Futuro": "INNOVACIÓN Y FUTURO",
+        };
+
+        const questionsData = [
+            {
+                section: "CULTURA Y ESTRATEGIA LEGAL",
+                area: "Cultura y Estrategia Legal",
+                questions: [
+                    { q: "¿Contamos con acompañamiento legal periódico o solo buscamos ayuda cuando hay un problema?", sub: "Cultura jurídica y prevención legal." },
+                    { q: "¿Tenemos políticas internas o lineamientos claros que promuevan el cumplimiento legal dentro de la empresa?", sub: "Cultura jurídica y prevención legal." },
+                    { q: "¿Tenemos un mapeo claro de los riesgos legales más importantes que podrían afectar nuestra operación o reputación?", sub: "Mapa general de riesgos legales." },
+                    { q: "¿Realizamos auditorías internas o externas para evaluar el cumplimiento normativo?", sub: "Mapa general de riesgos legales." },
+                    { q: "¿Nuestra empresa tiene todos los documentos legales actualizados para participar en licitaciones o convocatorias públicas?", sub: "Preparación legal para el crecimiento, inversión y licitaciones." },
+                    { q: "¿Los contratos y activos de la empresa están organizados y listos para presentar en un proceso de due diligence?", sub: "Preparación legal para el crecimiento, inversión y licitaciones." },
+                ]
+            },
+            {
+                section: "GESTIÓN JURÍDICA OPERATIVA",
+                area: "Gestión Jurídica Operativa",
+                questions: [
+                    { q: "¿Todos los contratos con clientes, proveedores y aliados están por escrito y firmados?", sub: "Contratos y relaciones comerciales." },
+                    { q: "¿Se revisan o actualizan periódicamente los contratos según cambios legales o comerciales?", sub: "Contratos y relaciones comerciales." },
+                    { q: "¿Se están pagando de forma oportuna todas las acreencias laborales?", sub: "Gestión laboral y seguridad social." },
+                    { q: "¿Tenemos manuales o protocolos internos que regulan acoso laboral, sanciones y procedimientos disciplinarios, el Reglamento Interno de Trabajo se encuentra actualizado?", sub: "Gestión laboral y seguridad social." },
+                    { q: "¿La empresa declara y paga a tiempo todos sus impuestos (IVA, renta, retención en la fuente)?", sub: "Tributario y financiero." },
+                    { q: "¿Se revisan periódicamente los procesos financieros para identificar posibles riesgos legales o fiscales?", sub: "Tributario y financiero." },
+                    { q: "¿Estamos preparados para una inspección o auditoría de entes como DIAN, Invima, MinTrabajo o Supersociedades?", sub: "Cumplimiento sectorial y regulatorio." },
+                    { q: "¿Se hace seguimiento a cambios normativos del sector que puedan impactar nuestra operación?", sub: "Cumplimiento sectorial y regulatorio." },
+                ]
+            },
+            {
+                section: "GOBIERNO CORPORATIVO Y CONTROL INTERNO",
+                area: "Gobierno Corporativo y Control Interno",
+                questions: [
+                    { q: "¿Nuestra empresa tiene al día sus actas de asamblea, junta directiva y libros obligatorios?", sub: "Gobierno corporativo y estructura societaria." },
+                    { q: "¿Hemos realizado las reformas estatutarias necesarias para reflejar la evolución del negocio?", sub: "Gobierno corporativo y estructura societaria." },
+                    // NUEVAS PREGUNTAS AÑADIDAS: Relaciones entre socios y pactos internos
+                    { q: "¿Se ha definido qué ocurre en caso de fallecimiento, retiro o conflicto entre socios?", sub: "Relaciones entre socios y pactos internos." },
+                    { q: "¿Existe claridad sobre distribución de utilidades, reinversión y toma de decisiones clave?", sub: "Relaciones entre socios y pactos internos." },
+                ]
+            },
+            {
+                section: "ACTIVOS INTANGIBLES Y REPUTACIÓN",
+                area: "Activos Intangibles y Reputación",
+                questions: [
+                    { q: "¿Nuestra marca, logotipo y nombre comercial están registrados ante la Superintendencia de Industria y Comercio (SIC)?", sub: "Propiedad intelectual y activos digitales." },
+                    { q: "¿Tenemos políticas sobre uso de imagen, fotografía o propiedad intelectual en campañas o contenidos digitales?", sub: "Propiedad intelectual y activos digitales." },
+                    { q: "¿Contamos con una política de tratamiento de datos personales publicada y accesible?", sub: "Protección de datos personales (Habeas Data)." },
+                    { q: "¿Solicitamos y almacenamos el consentimiento informado de nuestros clientes, empleados o proveedores para tratar sus datos?", sub: "Protección de datos personales (Habeas Data)." },
+                    { q: "¿Sabemos cómo actuar legalmente en caso de publicaciones difamatorias o ataques a nuestra empresa en internet?", sub: "Reputación digital y riesgos legales en redes." },
+                    { q: "¿Contamos con lineamientos o contratos que regulan el uso de la marca o redes sociales por parte de empleados o aliados?", sub: "Reputación digital y riesgos legales en redes." },
+                    // La sección 12 fue omitida en el prompt original, así que pasamos a la 13
+                ]
+            },
+            {
+                section: "SECTORES ESPECIALIZADOS",
+                area: "Sectores Especializados",
+                questions: [
+                    // El prompt solo incluye la subsección 13, que solo aplica a sectores asegurador/asegurados
+                    { q: "¿Contamos con pólizas actualizadas que cubren adecuadamente nuestros principales riesgos operativos y contractuales?", sub: "Empresas del sector asegurador o aseguradas." },
+                    { q: "¿Entendemos las exclusiones, coberturas y condiciones clave de nuestras pólizas o contratos con aseguradoras?", sub: "Empresas del sector asegurador o aseguradas." },
+                ]
+            },
+            {
+                section: "INNOVACIÓN Y FUTURO",
+                area: "Innovación y Futuro",
+                questions: [
+                    { q: "¿Usamos herramientas digitales o de automatización (CRM, bots, IA) con respaldo legal adecuado (políticas, términos, evidencias)?", sub: "Tecnología, automatización y LegalTech." },
+                    { q: "¿Hemos evaluado los riesgos legales asociados al uso de inteligencia artificial, big data o automatización de decisiones?", sub: "Tecnología, automatización y LegalTech." },
+                    { q: "¿Nuestra página web y tienda virtual cumplen con los requisitos legales mínimos (política de cookies, términos y condiciones, aviso de privacidad)?", sub: "Cumplimiento con IA, comercio electrónico y normativas digitales." },
+                    { q: "¿Contamos con mecanismos seguros y legales para el procesamiento de pagos y tratamiento de datos en nuestras plataformas?", sub: "Cumplimiento con IA, comercio electrónico y normativas digitales." },
+                ]
+            },
+        ];
+
+        // Opciones de respuesta y sus valores porcentuales para el cálculo
+        const answerOptions = [
+            { text: "No lo hemos hecho o no aplica actualmente.", value: 25 },
+            { text: "Lo estamos iniciando, pero no está completo ni formalizado.", value: 50 },
+            { text: "Sí lo hacemos, pero podríamos mejorarlo o actualizarlo.", value: 75 },
+            { text: "Sí, está completamente implementado, actualizado y bajo control.", value: 100 },
+        ];
+
+        // Calcular el total de preguntas al inicio
+        totalQuestions = questionsData.reduce((acc, section) => acc + section.questions.length, 0);
+
+        // --- Funciones de Utilidad ---
+
+        /**
+         * Reemplaza placeholders en el texto con los datos del usuario.
+         * @param {string} text Texto con el placeholder 'su empresa'.
+         * @returns {string} Texto formateado.
+         */
+        function formatText(text) {
+            let name = userData.name || 'Cliente';
+            let formattedText = text.replace(/Bienvenido\/a/, `Bienvenido/a ${name}`);
+            if (userData.company) {
+                formattedText = formattedText.replace(/su empresa/g, userData.company);
+            }
+            return formattedText;
+        }
+
+        /**
+         * Obtiene la clase de color de texto basada en el porcentaje.
+         * @param {number} score Porcentaje de la puntuación.
+         * @returns {string} Clase de color de texto.
+         */
+        function getColorClass(score) {
+            if (score <= 40) return 'text-level-red';
+            if (score <= 70) return 'text-level-yellow';
+            return 'text-level-green';
+        }
+        
+        /**
+         * Obtiene el color HEX basado en el porcentaje para los gráficos.
+         * @param {number} score Porcentaje de la puntuación.
+         * @returns {string} Color HEX.
+         */
+        function getAreaColor(score) {
+            if (score <= 40) return RED_COLOR;
+            if (score <= 70) return YELLOW_COLOR;
+            return GREEN_COLOR;
+        }
+
+        /**
+         * Obtiene el nombre del nivel de madurez basado en el porcentaje.
+         * @param {number} score Porcentaje de la puntuación.
+         * @returns {{level: string, color: string}} Nivel y color.
+         */
+        function getMaturityLevel(score) {
+            if (score <= 40) return { level: "Empresa en riesgo jurídico", color: RED_COLOR };
+            if (score <= 70) return { level: "En proceso de fortalecimiento", color: YELLOW_COLOR };
+            return { level: "Empresa jurídicamente sólida", color: GREEN_COLOR };
+        }
+        
+        /**
+         * Obtiene el nombre de la sección y su descripción.
+         * @param {string} sectionTitle Título simplificado de la sección.
+         * @returns {{title: string, description: string}}
+         */
+        function getSectionInfo(sectionTitle) {
+            let finalTitle = "";
+            let description = "";
+
+            if (sectionTitle === "CULTURA Y ESTRATEGIA LEGAL") {
+                finalTitle = "Cultura y Estrategia Legal";
+                description = areaDescriptions["Cultura y Estrategia Legal"];
+            } else if (sectionTitle === "GESTIÓN JURÍDICA OPERATIVA") {
+                finalTitle = "Gestión Jurídica Operativa";
+                description = areaDescriptions["Contratos y Relaciones Comerciales"]; // Usando la descripción de contratos como principal
+            } else if (sectionTitle === "GOBIERNO CORPORATIVO Y CONTROL INTERNO") {
+                finalTitle = "Derecho Corporativo y Societario";
+                description = areaDescriptions["Gobierno Corporativo y Control Interno"];
+            } else if (sectionTitle === "ACTIVOS INTANGIBLES Y REPUTACIÓN") {
+                finalTitle = "Activos Intangibles y Reputación";
+                description = areaDescriptions["Propiedad intelectual y activos digitales"]; // Usando la de propiedad intelectual
+            } else if (sectionTitle === "SECTORES ESPECIALIZADOS") {
+                finalTitle = "Relación con Aseguradoras y Gestión de Riesgos";
+                description = areaDescriptions["Sectores Especializados"];
+            } else if (sectionTitle === "INNOVACIÓN Y FUTURO") {
+                finalTitle = "Tecnología Legal y Automatización (LegalTech)";
+                description = areaDescriptions["Innovación y Futuro"];
+            }
+            
+            return { title: finalTitle, description: description || "Esta sección evalúa aspectos clave de la madurez legal de la empresa." };
+        }
+
+
+        // --- Renderizado de Fases ---
+
+        function renderWelcome() {
+            document.getElementById('progress-counter').classList.add('hidden');
+            document.getElementById('content-area').innerHTML = `
+                <div class="text-center py-12 px-4">
+                    <div class="mb-6">
+                        <img src="https://mcaasesores.com.co/wp-content/uploads/2025/07/Logo1MCA.png" alt="Logo de MCA Abogados" class="mx-auto h-16 w-auto">
+                    </div>
+
+                    <h1 class="text-4xl sm:text-5xl font-black primary-text mb-4 tracking-tight">
+                        Radar Legal Empresarial – MCA Abogados
+                    </h1>
+                    <h2 class="text-2xl sm:text-3xl text-gray-800 font-semibold max-w-3xl mx-auto mt-6 mb-8">
+                        ¿Tu empresa está legalmente preparada para crecer, negociar o enfrentar auditorías?
+                    </h2>
+                    <p class="text-lg text-gray-700 font-normal max-w-3xl mx-auto mb-6">
+                        Responde este autodiagnóstico y descubre tu nivel de madurez legal:
+                    </p>
+                    <ul class="text-left max-w-md mx-auto space-y-3 mb-8 text-gray-700">
+                        <li class="flex items-center text-lg">
+                            <span class="text-green-500 mr-3">✔️</span>
+                            Identifica riesgos ocultos, fortalezas y oportunidades de mejora.
+                        </li>
+                        <li class="flex items-center text-lg">
+                            <span class="text-green-500 mr-3">✔️</span>
+                            Recibe un reporte personalizado con recomendaciones para avanzar con seguridad.
+                        </li>
+                    </ul>
+                    
+                    <p class="text-xl font-bold mb-8 primary-text">
+                        🔵 Toma menos de 10 minutos y puede ahorrarte millones.
+                    </p>
+
+                    <button onclick="changePhase('info')" class="btn-primary text-white font-bold py-4 px-12 rounded-xl text-lg shadow-lg hover:shadow-2xl transition transform hover:scale-105">
+                        Iniciar Autodiagnóstico
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderUserInfo() {
+             // ... (código renderUserInfo sin cambios) ...
+             document.getElementById('content-area').innerHTML = `
+                <h2 class="text-3xl font-bold primary-text mb-8 border-b pb-3 border-gray-200">Información para enviarte tu resultado</h2>
+                <div class="space-y-6 max-w-lg mx-auto">
+                    <div>
+                        <label for="name" class="block text-gray-700 font-semibold mb-2">Nombre <span class="text-red-500">*</span></label>
+                        <input type="text" id="name" value="${userData.name}" placeholder="Su nombre" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-150">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-gray-700 font-semibold mb-2">Correo Electrónico <span class="text-red-500">*</span></label>
+                        <input type="email" id="email" value="${userData.email}" placeholder="correo@ejemplo.com" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-150">
+                    </div>
+                    <div>
+                        <label for="company" class="block text-gray-700 font-semibold mb-2">Empresa (Opcional)</label>
+                        <input type="text" id="company" value="${userData.company}" placeholder="Nombre de su empresa" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-150">
+                    </div>
+                    
+                    <div class="flex items-start pt-2">
+                        <input type="checkbox" id="data-consent" class="mt-1 h-5 w-5 rounded text-blue-600 border-gray-300 focus:ring-blue-500" required>
+                        <label for="data-consent" class="ml-3 text-sm font-medium text-gray-700 select-none cursor-pointer">
+                            Acepto la <a href="#" class="primary-text font-semibold hover:underline">Política de Tratamiento de Datos</a> y autorizo el uso de mi información para el diagnóstico. <span class="text-red-500">*</span>
+                        </label>
+                    </div>
+
+                    <button onclick="collectUserInfo()" class="btn-primary text-white font-bold py-3 px-8 rounded-xl text-lg w-full mt-6 shadow-md">
+                        Continuar
+                    </button>
+                </div>
+            `;
+        }
+
+        function collectUserInfo() {
+            const nameInput = document.getElementById('name').value.trim();
+            const emailInput = document.getElementById('email').value.trim();
+            const companyInput = document.getElementById('company').value.trim();
+            const consentCheckbox = document.getElementById('data-consent');
+
+            // 1. Validación de campos obligatorios
+            if (!nameInput || !emailInput) {
+                showFloatingMessage('El Nombre y el Correo Electrónico son obligatorios.', 'red');
+                return;
+            }
+
+            // 2. Validación de formato de correo electrónico
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(emailInput)) {
+                showFloatingMessage('Por favor, ingresa un formato de correo electrónico válido (ej: nombre@dominio.com).', 'red');
+                return;
+            }
+            
+            // 3. Validación de la casilla de manejo de datos
+            if (!consentCheckbox.checked) {
+                showFloatingMessage('Debes aceptar la Política de Tratamiento de Datos para continuar.', 'red');
+                return;
+            }
+
+            // Si pasa las validaciones, guardar datos
+            userData.name = nameInput;
+            userData.email = emailInput;
+            userData.company = companyInput;
+
+            // Personalizar el mensaje del modal (¡Nombre! El tiempo estimado es...)
+            const firstName = userData.name.split(' ')[0];
+            document.getElementById('modal-greeting').textContent = `¡Hola ${firstName}!`;
+
+            // Mostrar modal de tiempo estimado
+            document.getElementById('time-modal').classList.remove('hidden');
+            document.getElementById('modal-close-btn').onclick = () => {
+                document.getElementById('time-modal').classList.add('hidden');
+                changePhase('quiz');
+            };
+        }
+
+        function renderQuiz() {
+             // ... (código renderQuiz sin cambios) ...
+             document.getElementById('progress-counter').classList.remove('hidden');
+
+            const allQuestions = questionsData.flatMap(section =>
+                section.questions.map(q => ({
+                    ...q,
+                    section: section.section,
+                    area: section.area
+                }))
+            );
+
+            if (currentQuestionIndex >= allQuestions.length) {
+                // Al terminar el quiz, llamar a la función de envío al servidor
+                submitResultsToServer();
+                return;
+            }
+
+            const currentQ = allQuestions[currentQuestionIndex];
+
+            // Obtener información de la sección (título largo y descripción)
+            const sectionInfo = getSectionInfo(currentQ.section);
+
+            // Actualizar contador
+            document.getElementById('answered-count').textContent = currentQuestionIndex;
+            document.getElementById('total-count').textContent = totalQuestions;
+
+            // Encontrar la respuesta seleccionada, si existe
+            const selectedAnswer = answers[currentQuestionIndex] ? answers[currentQuestionIndex].value : null;
+            
+            // Determinar si se debe mostrar el botón Anterior
+            const showPrevButton = currentQuestionIndex > 0;
+
+            // Renderizar la pregunta
+            document.getElementById('content-area').innerHTML = `
+                <div class="mb-8 p-4 border-b border-gray-200">
+                    <h2 class="text-2xl font-bold primary-text">${sectionInfo.title}</h2>
+                    <p class="text-sm font-normal text-gray-600 mt-2 leading-relaxed">${sectionInfo.description}</p>
+                    <h3 class="text-base font-semibold text-gray-500 mt-3">${currentQ.sub}</h3>
+                </div>
+
+                <div class="p-6 bg-gray-50 rounded-xl shadow-inner mb-8">
+                    <p class="text-xl font-semibold text-gray-800">${currentQuestionIndex + 1}. ${formatText(currentQ.q)}</p>
+                </div>
+
+                <div id="answer-options-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+                    ${answerOptions.map((option, index) => `
+                        <div 
+                            class="answer-option p-4 rounded-xl shadow-md ${selectedAnswer === option.value ? 'selected' : ''}" 
+                            data-value="${option.value}"
+                            onclick="selectAnswer(this, ${option.value}, '${currentQ.area}')"
+                        >
+                            <p class="text-sm font-medium text-gray-900">${option.text}</p>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="flex ${showPrevButton ? 'justify-between' : 'justify-end'}">
+                    ${showPrevButton ? `
+                        <button onclick="prevQuestion()" class="bg-gray-200 text-gray-800 font-bold py-3 px-10 rounded-xl text-lg shadow-md hover:bg-gray-300 transition">
+                            Anterior
+                        </button>
+                    ` : ''}
+
+                    <button id="next-button" onclick="nextQuestion()" class="btn-primary text-white font-bold py-3 px-10 rounded-xl text-lg shadow-lg transition ${selectedAnswer === null ? 'opacity-50 cursor-not-allowed' : ''}" ${selectedAnswer === null ? 'disabled' : ''}>
+                        Siguiente (${currentQuestionIndex + 1}/${totalQuestions})
+                    </button>
+                </div>
+            `;
+        }
+
+        function selectAnswer(element, value, area) {
+            // Deseleccionar todos
+            document.querySelectorAll('.answer-option').forEach(opt => opt.classList.remove('selected'));
+            // Seleccionar el actual
+            element.classList.add('selected');
+
+            // Guardar la respuesta
+            answers[currentQuestionIndex] = { 
+                value, 
+                area,
+                question: questionsData.flatMap(s => s.questions).find((q, idx) => idx === currentQuestionIndex).q, // Guardar la pregunta para el backend
+                answerText: answerOptions.find(o => o.value === value).text // Guardar el texto de la respuesta
+            };
+
+            // Habilitar el botón "Siguiente"
+            const nextButton = document.getElementById('next-button');
+            nextButton.disabled = false;
+            nextButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function nextQuestion() {
+            if (!answers[currentQuestionIndex]) {
+                showFloatingMessage('Por favor, selecciona una opción antes de continuar.', 'red');
+                return;
+            }
+            currentQuestionIndex++;
+            renderQuiz();
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuiz();
+            }
+        }
+        
+        // --- NUEVA FUNCIÓN DE ENVÍO AL SERVIDOR ---
+        async function submitResultsToServer() {
+            // Mostrar modal de procesamiento
+            document.getElementById('server-modal-message').textContent = `Estamos calculando tu nivel de madurez, generando el reporte PDF y enviándolo a tu correo electrónico (${userData.email}). Por favor, espera un momento. Esto puede tardar unos segundos.`;
+            document.getElementById('server-modal').classList.remove('hidden');
+            
+            const dataToSend = {
+                userData: userData,
+                results: answers // respuestas con valor, área, pregunta y texto
+            };
+
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataToSend)
+                });
+                
+                const result = await response.json();
+
+                if (result.status === 'SUCCESS' && result.pdfUrl) {
+                    const downloadButton = document.getElementById('download-button');
+                    const serverModalTitle = document.getElementById('server-modal-title');
+                    const serverModalMessage = document.getElementById('server-modal-message');
+                    const serverModalIcon = document.getElementById('server-modal-icon');
+
+                    // Actualizar el modal con el éxito
+                    serverModalIcon.innerHTML = '🎉';
+                    serverModalTitle.textContent = '¡Diagnóstico Completado!';
+                    serverModalMessage.innerHTML = `Hemos enviado tu reporte en PDF al correo <strong>${userData.email}</strong>. También puedes descargarlo inmediatamente aquí:`;
+                    
+                    downloadButton.href = result.pdfUrl;
+                    downloadButton.classList.remove('hidden');
+                    
+                    showFloatingMessage('¡El PDF ha sido enviado a tu correo! Revisa la bandeja de entrada y spam.', 'green');
+
+                    // Al tener el PDF, renderizamos la fase final de 'results'
+                    renderResults(result.pdfUrl);
+
+                } else {
+                    throw new Error(result.error || 'Error desconocido del servidor.');
+                }
+
+            } catch (error) {
+                console.error("Error al enviar al Apps Script:", error);
+                
+                const serverModalTitle = document.getElementById('server-modal-title');
+                const serverModalMessage = document.getElementById('server-modal-message');
+                const serverModalIcon = document.getElementById('server-modal-icon');
+                
+                // Actualizar el modal con el error
+                serverModalIcon.innerHTML = '❌';
+                serverModalTitle.textContent = 'Error en el Procesamiento';
+                serverModalMessage.textContent = 'Ocurrió un error al generar el PDF y enviar el correo. Por favor, intenta de nuevo o contacta a soporte. La información fue guardada, pero el PDF no pudo ser generado: ' + error.message;
+
+                // Forzar el renderizado de la vista de resultados sin PDF
+                renderResults(null); 
+            } finally {
+                // Ocultar el modal de procesamiento, pero dejar el modal de resultados visible
+                // document.getElementById('server-modal').classList.add('hidden'); // Lo mantendremos para mostrar el resultado final.
+            }
+        }
+        
+        function renderResults(pdfUrl) {
+            document.getElementById('progress-counter').classList.add('hidden');
+            document.getElementById('server-modal').classList.add('hidden'); // Ocultamos el modal de procesamiento
+            
+            // Re-calcular scores para el display
+            const allScores = answers.map(a => a.value);
+            const totalScore = allScores.reduce((sum, val) => sum + val, 0);
+            const averageScore = totalQuestions > 0 ? Math.round((totalScore / (totalQuestions * 100)) * 100) : 0;
+            const maturity = getMaturityLevel(averageScore);
+            const scorePosition = averageScore; 
+
+            // 1. Cálculo de puntuaciones por área
+            const areaScores = questionsData.map(section => {
+                const areaQuestions = answers.filter(a => a.area === section.area);
+                const areaTotal = areaQuestions.length;
+                const areaScoreSum = areaQuestions.reduce((sum, a) => sum + a.value, 0);
+                const areaAverage = areaTotal > 0 ? Math.round((areaScoreSum / (areaTotal * 100)) * 100) : 0;
+                return { 
+                    area: section.area, 
+                    score: areaAverage, 
+                    total: areaTotal,
+                    label: getSectionInfo(section.section).title 
+                };
+            }).filter(a => a.total > 0); 
+
+            const firstName = userData.name.split(' ')[0]; 
+
+            // 2. Preparación del contenido HTML
+            document.getElementById('content-area').innerHTML = `
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl sm:text-4xl font-black primary-text mb-3">¡${firstName}, has completado el diagnóstico!</h2>
+                    <p class="text-lg text-gray-600 font-medium">${formatText('Este es el nivel de madurez jurídica de su empresa:')}</p>
+                </div>
+
+                <div class="flex flex-col items-center mb-10">
+                    <p class="text-5xl sm:text-6xl font-black mb-2" style="color: ${maturity.color};">
+                        ${averageScore}%
+                    </p>
+                    <p class="text-2xl font-extrabold text-gray-800">${maturity.level}</p>
+                </div>
+
+                <div class="mb-12 relative max-w-3xl mx-auto">
+                    <div id="overall-bar" class="h-8 rounded-full shadow-lg w-full"></div>
+                    
+                    <div id="score-indicator" class="absolute top-0 flex flex-col items-center" style="left: ${scorePosition}%; margin-top: -32px;">
+                        <span class="text-sm font-bold text-gray-800 px-3 py-1 rounded-md mb-1" style="background-color: ${maturity.color}; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${averageScore}%</span>
+                        <div class="w-0 h-0 border-l-6 border-r-6 border-t-6" style="border-top-color: ${maturity.color};"></div>
+                    </div>
+
+                    <div class="flex justify-between text-xs mt-2 font-semibold text-gray-600">
+                        <span class="text-level-red w-1/3 text-left pl-1">Riesgo Jurídico</span>
+                        <span class="text-level-yellow w-1/3 text-center">Fortalecimiento</span>
+                        <span class="text-level-green w-1/3 text-right pr-1">Sólida</span>
+                    </div>
+                </div>
+
+
+                <h3 class="text-2xl font-bold primary-text mb-6 mt-10 text-center border-b pb-3 border-gray-200">Detalle por Áreas de Madurez</h3>
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <div class="w-full lg:w-1/2 bg-white p-6 rounded-xl shadow-xl border border-gray-100">
+                        <h4 class="text-xl font-semibold mb-4 text-center text-gray-800">Puntuación por Bloque</h4>
+                        <canvas id="areaBarChart"></canvas>
+                    </div>
+
+                    <div class="w-full lg:w-1/2 bg-white p-6 rounded-xl shadow-xl border border-gray-100">
+                        <h4 class="text-xl font-semibold mb-4 text-center text-gray-800">Distribución de Madurez (Radar)</h4>
+                        <canvas id="areaRadarChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-center gap-4 mt-10">
+                    ${pdfUrl ? `
+                        <a href="${pdfUrl}" target="_blank" class="btn-primary text-white font-bold py-3 px-8 rounded-xl text-base shadow-lg hover:shadow-xl text-center flex-1 sm:flex-none">
+                            Descarga tu Reporte PDF
+                        </a>
+                    ` : `
+                        <button class="bg-red-500 text-white font-bold py-3 px-8 rounded-xl text-base shadow-lg transition flex-1 sm:flex-none" disabled>
+                            Reporte PDF No Disponible (Error en el servidor)
+                        </button>
+                    `}
+                    <a href="mailto:${userData.email}?subject=Diagn%C3%B3stico%20Legal%20de%20${userData.company || 'Mi Empresa'}&body=Mi%20puntuaci%C3%B3n%20fue%20de%20${averageScore}%.%20Quisiera%20agendar%20un%20diagn%C3%B3stico%20sin%20costo%20de%2030%20minutos." class="bg-green-500 text-white font-bold py-3 px-8 rounded-xl text-base shadow-lg hover:bg-green-600 text-center flex-1 sm:flex-none">
+                        Agenda tu asesoría sin costo (30 min)
+                    </a>
+                    <button onclick="changePhase('welcome', true)" class="bg-black text-white font-bold py-3 px-8 rounded-xl text-base shadow-md hover:bg-gray-800 transition flex-1 sm:flex-none">
+                        Reiniciar
+                    </button>
+                </div>
+            `;
+
+            // 3. Renderizado de Gráficos (usando Chart.js)
+            renderCharts(areaScores);
+        }
+
+        // ... (el resto de funciones como renderCharts, changePhase, showFloatingMessage, etc., se mantienen sin cambios o con ligeras adaptaciones de lógica)
+        function renderCharts(areaScores) {
+            const labels = areaScores.map(a => a.label);
+            const data = areaScores.map(a => a.score);
+            
+            // Asigna color a cada barra basado en su puntuación (0-40=Rojo, 41-70=Amarillo, 71-100=Verde)
+            const backgroundColors = data.map(score => getAreaColor(score));
+
+            // Destruir instancias anteriores si existen
+            Object.values(chartInstances).forEach(chart => chart.destroy());
+
+            // Gráfico de Barras (Izquierda)
+            const barCtx = document.getElementById('areaBarChart').getContext('2d');
+            chartInstances.barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Puntuación Promedio (%)',
+                        data: data,
+                        backgroundColor: backgroundColors, 
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y', // Barras horizontales
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { stepSize: 20 },
+                            grid: { display: false }
+                        },
+                        y: {
+                            grid: { color: '#e5e7eb' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { 
+                            callbacks: { 
+                                label: (context) => context.dataset.label + ': ' + context.parsed.x + '%',
+                                title: (context) => context[0].label.length > 20 ? context[0].label.substring(0, 20) + '...' : context[0].label
+                            } 
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de Radar (Derecha)
+            const radarCtx = document.getElementById('areaRadarChart').getContext('2d');
+            chartInstances.radarChart = new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Nivel de Madurez',
+                        data: data,
+                        backgroundColor: `rgba(12, 57, 101, 0.25)`, 
+                        borderColor: PRIMARY_COLOR,
+                        pointBackgroundColor: PRIMARY_COLOR,
+                        pointBorderColor: '#fff',
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    elements: { line: { borderWidth: 3 } },
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.15)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: { 
+                                font: { size: 12, weight: 'bold' },
+                                color: '#374151',
+                                // Envolver texto largo para que no se superponga
+                                callback: (label) => label.length > 15 ? label.match(/.{1,15}/g) : label
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: {
+                                display: false 
+                            }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        /**
+         * Cambia la fase de la aplicación.
+         * @param {string} phase Nombre de la fase ('welcome', 'info', 'quiz', 'results').
+         * @param {boolean} reset Si se deben reiniciar los datos (solo en 'welcome').
+         */
+        function changePhase(phase, reset = false) {
+            currentPhase = phase;
+            if (reset) {
+                currentQuestionIndex = 0;
+                answers = [];
+                // Preservar datos de usuario al reiniciar
+            }
+
+            switch (phase) {
+                case 'welcome':
+                    renderWelcome();
+                    break;
+                case 'info':
+                    renderUserInfo();
+                    break;
+                case 'quiz':
+                    renderQuiz();
+                    break;
+                case 'results':
+                    renderResults(null); // Llamar a renderResults sin PDF URL si llegamos aquí directamente (no debería pasar)
+                    break;
+                default:
+                    renderWelcome();
+            }
+        }
+        
+        function showFloatingMessage(message, type = 'blue') {
+            const container = document.getElementById('app-container');
+            let bgColor;
+            if (type === 'red') bgColor = 'bg-red-500';
+            else if (type === 'green') bgColor = 'bg-green-500';
+            else bgColor = 'bg-blue-500';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `fixed top-6 left-1/2 transform -translate-x-1/2 p-4 rounded-xl text-white font-semibold shadow-2xl ${bgColor} transition-opacity duration-300 z-50`;
+            msgDiv.textContent = message;
+
+            document.body.appendChild(msgDiv);
+            setTimeout(() => {
+                msgDiv.style.opacity = '0';
+                setTimeout(() => msgDiv.remove(), 300);
+            }, 3000);
+        }
+
+        // Iniciar la aplicación en la fase de bienvenida
+        window.onload = () => {
+            changePhase('welcome');
+        };
+
+    </script>
+</body>
+</html>
